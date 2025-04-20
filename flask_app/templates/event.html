@@ -47,24 +47,14 @@
                 <option value="maybe">Maybe</option>
                 <option value="unavailable">Unavailable</option>
             </select>
+            <!-- JS creates the availability table and puts it here -->
 
-            <table>
-                <tbody>
-                    {% for time in times %}
-                        <tr>
-                            <td>{{ time }}</td>
-                            {% for date in dates %}
-                                <td class="slot" data-date="{{ date }}" data-time="{{ time }}"></td>
-                            {% endfor %}
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
     </div>
     <div class="spacer"></div>
 
 <script type="text/javascript" charset="utf-8">
+// Turn the HTML variables for this event (taken from the database by routes.py) into JS
 const availability = {{ availability | tojson }};
 const eventDates = {{ dates | tojson }};
 eventDates.sort((a, b) => new Date(a) - new Date(b));
@@ -75,16 +65,19 @@ const times = Array.from({length: 28}, (_, i) => {
     return `${String(hour).padStart(2, '0')}:${minutes}`;
 });
 
-function getStatus(date, time) {
-    const found = availability.find(a => a.date === date && a.time === time);
-    return found ? found.status : "unavailable";
-}
-
+// Variables to manage single and group time slot clicks
 let selectedStatus = "available";
 let isMouseDown = false;
 let startCell = null;
 let hasInteracted = false;
 
+// Ask a specific cell for its availability status ("unavailable", "maybe", "available")
+function getStatus(date, time) {
+    const found = availability.find(a => a.date === date && a.time === time);
+    return found ? found.status : "unavailable";
+}
+
+// Create the grid using JS so that I can assign data values and event listeners to cells
 function createGrid() {
     const grid = document.getElementById('availability-grid');
     const table = document.createElement('table');
@@ -105,20 +98,22 @@ function createGrid() {
     // Body
     const tbody = document.createElement('tbody');
     times.forEach((time, row) => {
+        // One row (tr) per 30-minute timeslot. The row marked 8:00 represents the 8:00 to 8:30 slot
         const tr = document.createElement('tr');
         const timeTd = document.createElement('td');
         timeTd.textContent = time;
         tr.appendChild(timeTd);
-
+        // One column entry (td) per event date
         eventDates.forEach((date, col) => {
             const status = getStatus(date, time);
             const td = document.createElement('td');
             td.className = `slot ${status}`;
             td.dataset.date = date;
             td.dataset.time = time;
-            td.dataset.status = status;
+            td.dataset.status = status;  // Each cell knows its own availability status. "unavailable" by default
             td.dataset.row = row;
             td.dataset.col = col;
+            // Each cell should know what to do when it is clicked on
             td.addEventListener("mousedown", e => {
                 isMouseDown = true;
                 startCell = td;
@@ -126,6 +121,7 @@ function createGrid() {
                 applyStatus(td);
                 e.preventDefault();
             });
+            // The latest-touched handles the rectangular selection (when you click and drag your mouse)
             td.addEventListener("mouseenter", e => {
                 if (isMouseDown && startCell) {
                     document.querySelectorAll(".preview").forEach(c => c.classList.remove("preview"));
@@ -142,6 +138,8 @@ function createGrid() {
     grid.appendChild(table);
 }
 
+// Return the list of cells that are (at least partially) inside the rectangle
+//  created by the position you clicked and the current position of your mouse
 function getCellsInRectangle(start, end) {
     const startRow = parseInt(start.dataset.row);
     const startCol = parseInt(start.dataset.col);
@@ -161,6 +159,7 @@ function getCellsInRectangle(start, end) {
     return cells;
 }
 
+// Change the color of a cell
 function applyStatus(cell) {
     const oldStatus = cell.dataset.status;
     if (oldStatus !== selectedStatus) {
@@ -170,6 +169,8 @@ function applyStatus(cell) {
     }
 }
 
+// Get a list of availability dictionaries for every square of the database
+// Ex: [{"date": "2025-04-20", "time": "09:00:00", "status": "available"}, ...]
 function collectAvailability() {
     return Array.from(document.querySelectorAll(".slot")).map(slot => ({
         date: slot.dataset.date,
@@ -178,6 +179,7 @@ function collectAvailability() {
     }));
 }
 
+// Save the current total availability state of the event calendar as seen on your screen
 function submitAvailability(eventId, availabilityData) {
     $.ajax({
         url: "/save_availability",
@@ -192,6 +194,7 @@ function submitAvailability(eventId, availabilityData) {
     });
 }
 
+// Make the background color of the dropdown match the current availability status
 function updateDropdownBackground() {
     const statusSelect = document.getElementById("status-select");
     const status = statusSelect.value;
@@ -204,6 +207,7 @@ function updateDropdownBackground() {
     }
 }
 
+// As soon as the mouse is lifted, save everything to the database using AJAX
 document.addEventListener("mouseup", () => {
     if (isMouseDown && hasInteracted) {
         const previewCells = document.querySelectorAll(".preview");
@@ -219,6 +223,7 @@ document.addEventListener("mouseup", () => {
     startCell = null;
 });
 
+// Tell the status selector (the dropdown) that it must change its color when its value changes
 document.addEventListener("DOMContentLoaded", () => {
     const statusSelector = document.getElementById("status-select");
     selectedStatus = statusSelector.value;
