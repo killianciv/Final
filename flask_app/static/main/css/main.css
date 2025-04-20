@@ -1,0 +1,184 @@
+* {
+   outline: 1px solid red; /* Debugging: See if anything extends past the viewport */
+}
+:root {
+    --primary-color: #4747d8;  /* RGB is 71,71,216 */
+    --orange: #f87c14;  /* RGB is 248,124,20 */
+    --navbar-color: #222222;
+    --footer-font-color: #CCCCCC;
+}
+html, body {
+    background : white;
+    color: black;
+    /*overflow-x: hidden; !* Prevents horizontal scrolling, but makes the navbar "sticky" not work *!*/
+    width: 100%; /* Ensures full width, cannot scroll sideways */
+    margin: 0; /* No whitespace around the edges of everything */
+}
+#navbar {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    align-items: center;
+    padding: 20px;
+}
+/* Entire edge-to-edge main section */
+#whole_main {
+    background-color: #CCCCCC;
+    width: 100vw;  /* 100% of the viewport width */
+    min-height: fit-content;  /* Ensures it extends as content grows */
+    display: flex;
+    flex-direction: column;  /* Stacks divs vertically */
+    align-items: center;  /* Centers all children horizontally */
+    padding: 0;
+}
+/* Outside of #whole_main */
+.spacer {
+    width: 100%;
+    height: 50vh;
+    background-color: inherit;
+}
+
+
+
+
+/*
+//
+// Login form
+//
+*/
+.login {
+    display: flex;
+    background-color: inherit;
+    width: 60vw;
+    height: 30vh;
+    padding: 5px;
+    align-items: center;  /* Horizontally */
+    box-sizing: border-box;
+}
+#login_form {
+    display: flex;
+    flex-direction: column;
+    background-color: #888888;
+    height: 100%;
+    width: 100%;
+    align-items: center;  /* Horizontally */
+    justify-content: space-evenly;  /* Vertically */
+}
+#login_success, #register_success {
+    display: none;  /* Hide initially */
+    color: #158215;
+    font-weight: bold;
+    text-align: center;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+//
+// Footer
+//
+*/
+/* Styles for the entire footer section */
+#footer {
+    background-color: var(--primary-color);
+    display: flex;
+    flex-direction: column;
+    align-content: center; /* horizontally b/c column */
+    justify-content: center; /* vertically b/c column*/
+    width: 100vw;
+    padding: 20px;
+    box-sizing: border-box;
+    height: fit-content;
+    text-align: center;
+}
+/* .info Contains left and right halves */
+.info {
+    display: flex;
+    height: fit-content;
+    background-color: var(--primary-color);
+}
+.info_half {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 300px;
+    background-color: var(--navbar-color);
+}
+.left {
+    align-items: flex-start;
+}
+.right {
+    align-items: flex-end;
+}
+#footer h3, #footer h4 {
+    font-size: 24px;
+    color: var(--footer-font-color);
+    margin: 5px;
+}
+#footer h4 {
+    font-size: 18px;
+}
+#footer p {
+    font-family: Verdana, serif;
+    text-align: center;
+    margin: 5px;
+    font-size: 14px;
+    color: var(--footer-font-color);
+}
+#footer .left, #footer .left p {
+    text-align: left;
+}  /* Force text to the edge */
+#footer .right, #footer .right p {
+    text-align: right;
+}  /* Force text to the edge */
+#footer a {
+    color: var(--footer-font-color);
+    text-decoration: underline 1px var(--footer-font-color);
+    text-underline-offset: 2px;  /* Gap between letters and line */
+}
+#footer a:hover  {
+    opacity: 1;
+    color: var(--orange);
+    text-decoration: underline 1px var(--orange);
+}
+.phone {
+
+}
+.email {
+
+}
+.insta {
+    display: flex;
+    align-items: flex-end;
+    height: fit-content;
+}
+.insta img {
+    height: 50px;
+}
+#footer .copy {  /* Must be this specific because the basic footer p styling is */
+    align-content: center;  /* Vertically */
+    justify-content: center;
+    height: 60px;
+    color: #ffffff;
+    background-color: #4747d8;
+    margin: 20px 0 0 0;  /* TRBL */
+}
+
+
+
+
+
+
+
+
+

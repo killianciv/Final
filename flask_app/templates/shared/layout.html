@@ -1,0 +1,87 @@
+<!-- FILL ME IN WITH CODE FOR YOUR PAGE LAYOUT -->
+<!DOCTYPE html>
+<html lang="eng">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="A page on Killian's website">
+        <meta name="keywords" content="practice, first, class">
+        <meta name="author" content="Killian Civiero">
+        <title>Killian's Website</title>
+        <link rel="shortcut icon" href="{{ url_for('static', filename='main/images/k_favicon.ico') }}">
+        <!-- Link all stylesheets to this document-->
+        <link rel="stylesheet" href="{{ url_for('static', filename='main/css/main.css') }}">
+        {% block extracss %}{% endblock %}  {# Pages can inject <link>s here. Underneath so conflicts override #}
+        <script src="{{ url_for('static', filename='main/js/main.js') }}" defer></script>
+        {% block extrajs %}{% endblock %}  {# Pages can inject <script>s here. Underneath so conflicts override #}
+    </head>
+
+    <body>
+        <article>
+        <!-- Nav bar -->
+        <div id="navbar">
+            {% if user == 'Unknown' %}
+            <p>Not signed in</p>
+            {% else %}
+            <p>Hello <b>{{user}}</b></p>
+            {% endif %}
+            <a href="/home">Homepage</a>
+            {% if user == 'Unknown' %}
+            <a href="/login"> Login </a>
+            {% else %}
+            <a href="/logout"> Logout </a>
+            {% endif %}
+        </div>
+
+        <main>
+            {% block maincontent %} {% endblock %}
+        </main>
+
+        <!-- The footer of the file -->
+        <div id="footer">
+            <div class="info">
+                <div class="info_half left">
+                    <h4>Main Location</h4>
+                    <p><a href="https://goo.gl/maps/ZovK849E2666A6qRA" target="_blank">Name of building
+                        <br>12321 Something Something St
+                        <br>City Name, MI 45654</a>
+                    </p>
+                </div>
+                <div class="info_half right">
+                    <h3>Questions?</h3>
+                    <h4>Click on any of the following:</h4>
+                    {# This makes it use Apple's mail #}
+                    <p class="email"><a href="mailto:fakeemail@gmail.com?subject=Clinic%20inquiry">>>  fakeemail@gmail.com  <<</a></p>
+		            <p class="phone"><a href="tel:&#x202A;123-456-7890&#x202C;" target="_blank">>>  123-456-7890&#x202C;  <<</a></p>
+                    <p class="insta">
+                        <a href="https://www.linkedin.com/in/killian-civiero/" class="image_link" target="_blank">
+                            <img src="../../static/main/images/instagram.png" class="insta_png" alt="Instagram link" loading="lazy">
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            <p class="copy">&copy; Killian Civiero</p>
+        </div>
+
+        </article>
+
+    </body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

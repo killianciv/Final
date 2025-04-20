@@ -1,0 +1,310 @@
+{% extends 'shared/layout.html' %}
+{% block extrajs %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+{% endblock %}
+
+{% block extracss %}
+<style>
+/* Divs holding the forms */
+#create_event, #join_event {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 50%;
+    height: fit-content;
+}
+/* The forms */
+#create_event_form, #join_event_form {
+
+}
+.calendar-wrapper {
+    max-width: 700px;
+    /*height: fit-content;*/
+    margin: auto;
+    margin-top: 20px;
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.calendar-header div {
+    padding: 10px 0;
+    background-color: #f2f2f2;
+    border-bottom: 2px solid #aaa;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 4px;
+}
+.calendar-cell {
+    background-color: #fff;
+    height: 80px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    transition: background-color 0.1s;
+    text-align: center;
+    line-height: 80px;
+    font-size: 14px;
+}
+.calendar-cell:hover {
+    background-color: #d0e8ff;
+}
+.calendar-cell.selected {
+    background-color: #0253a8;
+    color: white;
+    font-weight: bold;
+}
+.calendar-cell.today {
+    font-weight: bold;
+}
+.calendar-cell.empty {
+    /*visibility: hidden;*/
+    background-color: #999999;
+}
+.calendar-cell.preview {
+    background-color: #a0cfff;
+    color: black;
+}
+</style>
+{% endblock %}
+
+{% block maincontent %}
+    <!-- The entire edge-to-edge main section (applies main.css styling)-->
+    <div id="whole_main">
+        <br>
+        <button onClick="showCreateNewEvent()">Create a new event</button>
+        <button onClick="showJoinEvent()">Join an event</button>
+
+        <div id="create_event">
+            <h1>Create an event:</h1>
+            <h2>Fill out the following fields</h2>
+            <form id="create_event_form">
+                <input type="text" id="create_name" placeholder="Enter Event Name" title="Enter a name" required>
+                <select id="create_start_time" required>
+                    <option value="" disabled>Select Start Time</option>
+                    <option value="0" selected>12:00 AM</option>
+                    <!-- 1AM-11AM -->
+                    {% for hour in range(1, 12) %}
+                        <option value="{{ hour }}">{{ "{:2d}:00 AM".format(hour) }}</option>
+                    {% endfor %}
+                    <option value="12">12:00 PM</option>
+                    <!-- 1PM-11PM -->
+                    {% for hour in range(1, 12) %}
+                        <option value="{{ hour + 12 }}">{{ "{:2d}:00 PM".format(hour) }}</option>
+                    {% endfor %}
+                    <option value="0">12:00 AM</option>
+                </select>
+                <select id="create_end_time" required>
+                    <option value="" disabled>Select End Time</option>
+                    <option value="0">12:00 AM</option>
+                    <!-- 1AM-11AM -->
+                    {% for hour in range(1, 12) %}
+                        <option value="{{ hour }}">{{ "{: 2d}:00 AM".format(hour) }}</option>
+                    {% endfor %}
+                    <option value="12" selected>12:00 PM</option>
+                    <!-- 1PM-11PM -->
+                    {% for hour in range(1, 12) %}
+                        <option value="{{ hour + 12 }}">{{ "{:2d}:00 PM".format(hour) }}</option>
+                    {% endfor %}
+                    <option value="0">12:00 AM</option>
+                </select>
+                <input type="text" id="create_invitees" placeholder="Enter a list of emails of people to invite" required value="temp@gmail.com">
+                <button type="button" onclick="createAnEvent()">Create Event</button>  {# button prevents default submit behavior #}
+            </form>
+            <!-- X -->
+            <div class="calendar-wrapper">
+                <div class="calendar-header">
+                    {% for day in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] %}
+                        <div>{{ day }}</div>
+                    {% endfor %}
+                </div>
+                <div class="calendar-grid">
+                <!-- 7 columns (days) x 5 rows (weeks) -->
+                {% for i in range(5) %}
+                    {% for j in range(7) %}
+                        {% set index = i * 7 + j %}
+                        {% if index < calendar_days|length %}
+                            <!-- Every calendar-cell has a date and a grid location -->
+                            <div class="calendar-cell {% if calendar_days[index] == today_str %}today{% endif %}"
+                                 data-date="{{ calendar_days[index] }}"
+                                 data-row="{{ i }}"
+                                 data-col="{{ j }}">
+                                {{ calendar_days[index] }}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+                </div>
+            </div>
+            <!-- X -->
+        </div>
+
+        <div id="join_event">
+            {% if invites %}
+                <!-- invites is a dictionary {event_id: {event_name, creator_email, date range of the event}, ...} -->
+                {% for event in invites %}
+                    <h1>Event name: {{ event['event_name'] }}</h1>
+                    <h2>Creator: {{ event['creator_name'] }}</h2>
+                    <h3>Date range: {{ event['start_date'] }} - {{ event['end_date'] }}</h3>
+                    <h4>Link: <a href="event/{{event['event_id']}}">Click to view the event</a></h4>
+                {% endfor %}
+            {% else %}
+                <h1>No invites</h1>
+            {% endif %}
+        </div>
+    </div>
+    <div class="spacer"></div>
+
+<!-- Below HTML to defer loading -->
+<script type="text/javascript" charset="utf-8">
+document.addEventListener("DOMContentLoaded", function () {
+    let isMouseDown = false;
+    let startCell = null;
+    let isSelecting = true;
+    const getCell = (row, col) => {
+        return document.querySelector(`.calendar-cell[data-row="${row}"][data-col="${col}"]`);
+    };
+    // Generate a list of all the calendar-cells in a rectangle between the start and the current location
+    const getCellsInRectangle = (start, end) => {
+        const startRow = parseInt(start.dataset.row);
+        const startCol = parseInt(start.dataset.col);
+        const endRow = parseInt(end.dataset.row);
+        const endCol = parseInt(end.dataset.col);
+        const minRow = Math.min(startRow, endRow);
+        const maxRow = Math.max(startRow, endRow);
+        const minCol = Math.min(startCol, endCol);
+        const maxCol = Math.max(startCol, endCol);
+        let cells = [];
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                const cell = getCell(r, c);
+                if (cell) cells.push(cell);
+            }
+        }
+        return cells;
+    };
+
+    // Bind clicking and group-selecting event listeners to every calender-cell
+    document.querySelectorAll(".calendar-cell").forEach(cell => {
+        cell.addEventListener("mousedown", (e) => {
+            isMouseDown = true;
+            startCell = cell;
+            isSelecting = !cell.classList.contains("selected");
+
+            // Clear previous selection preview
+            document.querySelectorAll(".calendar-cell.preview").forEach(c => c.classList.remove("preview"));
+            cell.classList.toggle("selected");  // Also works if the mouse was clicked on a single cell
+            e.preventDefault();
+        });
+
+        cell.addEventListener("mouseenter", (e) => {
+            // If the mouse was first clicked in a cell and is still held down
+            if (isMouseDown && startCell) {
+                // Go from selected or unselected to the light blue "preview" to show the contingent rectangle
+                document.querySelectorAll(".calendar-cell.preview").forEach(c => c.classList.remove("preview"));
+                const rectCells = getCellsInRectangle(startCell, cell);
+                rectCells.forEach(c => {
+                    c.classList.add("preview");
+                });
+            }
+        });
+    });
+
+    document.addEventListener("mouseup", () => {
+        if (isMouseDown && startCell) {
+            // Finalize selection by toggling the cells that "mouseenter" labeled "preview"
+            const selectedCells = document.querySelectorAll(".calendar-cell.preview");
+            selectedCells.forEach(cell => {
+                if (isSelecting) {
+                    cell.classList.add("selected");
+                } else {
+                    cell.classList.remove("selected");
+                }
+                cell.classList.remove("preview");
+            });
+        }
+        isMouseDown = false;
+        startCell = null;
+    });
+});
+
+function createAnEvent() {
+    const eventName = document.querySelector("#create_name").value;
+    const startTime = document.querySelector("#create_start_time").value;
+    const endTime = document.querySelector("#create_end_time").value;
+    const inviteesString = document.querySelector("#create_invitees").value;
+    // An array because selected days don't have to be consecutive
+    const selectedDates = Array.from(document.querySelectorAll(".calendar-cell.selected"))
+                               .map(cell => cell.dataset.date);
+
+    // Make sure the inputs were answered
+    if (!eventName || !startTime || !endTime || !inviteesString || selectedDates.length === 0) {
+        alert("Please fill out all fields and select at least one day on the calendar.");
+        return;
+    }
+
+    // Send front-end data to the backend. Flask backend will call db.addEvent() and add the user's email
+    const data_d = {
+        name: eventName,
+        selected_dates: selectedDates,
+        start_time: startTime,
+        end_time: endTime,
+        invitees: inviteesString
+    };
+
+    jQuery.ajax({
+        url: "/createevent",
+        type: "POST",
+        data: JSON.stringify(data_d),
+        contentType: "application/json",
+        success: function (returned_data) {
+            returned_data = JSON.parse(returned_data);
+            if (returned_data.success) {
+                // Flask should make a page for it
+                window.location.href = returned_data['eventpage'];
+            } else {
+                alert("Something went wrong.");
+            }
+        },
+        error: function (xhr, status, error) {
+            console.error("AJAX error:", status, error);
+        }
+    });
+}
+
+function showCreateNewEvent() {
+    const createEventArea = document.querySelector("#create_event");
+    // Because the original 'display: none;' is undefined to begin
+    const displayValue = window.getComputedStyle(createEventArea).display;
+    // Toggle it
+    if (displayValue === "none") {
+    createEventArea.style.display = "block";
+    } else {
+        createEventArea.style.display = "none";
+    }
+}
+
+function showJoinEvent() {
+    const joinEventArea = document.querySelector("#join_event");
+    // Because the original 'display: none;' is undefined to begin
+    const displayValue = window.getComputedStyle(joinEventArea).display;
+    // Toggle it
+    if (displayValue === "none") {
+        joinEventArea.style.display = "block";
+    } else {
+        joinEventArea.style.display = "none";
+    }
+}
+
+</script>
+
+{% endblock %}  {# maincontent #}
+
+

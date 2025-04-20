@@ -1,0 +1,135 @@
+{% extends 'shared/layout.html' %}
+<!-- id="next" can store the URL of the restricted page '/next=' that rerouted to /login -->
+{% block extrajs %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+{% endblock %}
+
+<!---->
+{% block maincontent %}
+    <!-- The entire edge-to-edge main section (applies main.css styling)-->
+    <div id="whole_main">
+        <h1 class="login_title">Login or register</h1>
+        <!-- The login form -->
+        <div class="login">
+            <form id="login_form">
+                <input type="hidden" id="next" name="next" value="{{ next }}">
+
+                <!-- username and password fields -->
+                <input type="email" id="login_email" placeholder="Enter your email" title="Enter a valid email (e.g., example@email.com)." required>
+                <input type="text" id="login_password" placeholder="Enter your password" title="Enter a strong password" required>
+
+                <div>
+                    <!-- Both make an HTTP POST request to /processfeedback. Sends {name:value, ...} -->
+                    <button type="button" id="login_button" onClick="checkCredentials()">Log In</button>
+                    <button type="button" id="register_button" onClick="register()">Register</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Success messages -->
+        <div id="login_success"> Login successful! Redirecting... </div>
+        <div id="register_success"> Registration successful! Redirecting... </div>
+
+        <div class="spacer"></div>
+    </div>
+
+<!-- Below HTML to defer loading -->
+<script type="text/javascript" charset="utf-8">
+function checkCredentials() {
+    const emailInput = document.querySelector("#login_email");
+    const email = emailInput.value;
+    const passwordInput = document.querySelector("#login_password");
+    const password = passwordInput.value;
+    const next = document.querySelector("#next")?.value || "/home";
+    let data_d = { 'email': email, 'password': password, 'next': next };  // A JSON object for /processlogin
+
+    // If either field is empty, just put their cursor in that field and do nothing
+    if (email !== "" && password !== "") {
+        // SEND DATA TO SERVER VIA jQuery.ajax({})
+        jQuery.ajax({
+            url: "/processlogin",
+            type: "POST",
+            data: data_d,
+            success: function (returned_data) {
+                returned_data = JSON.parse(returned_data);
+                // If /processlogin returned {'success': 1}
+                if (returned_data.success) {
+                    // Show success message
+                    let successDiv = document.getElementById("login_success");
+                    successDiv.style.display = "block";
+                    setTimeout(() => {
+                        successDiv.style.display = "none";
+                        // This 'next' from /processlogin may be different from
+                        //  the returned_data of the prior request (the 'next' variable
+                        //  above) that was injected before loading this page
+                        window.location.href = returned_data.next || "/home";
+                    }, 3500);
+                } else {
+                    window.location.href = "/login";  // Reload
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error("AJAX error:", status, error);
+            }
+        });
+    } else {
+        if (password === "") { passwordInput.focus(); }
+        if (email === "") { emailInput.focus(); }  // Second if == it is prioritized
+    }
+}
+
+function register() {
+    const emailInput = document.querySelector("#login_email");
+    const email = emailInput.value;
+    const passwordInput = document.querySelector("#login_password");
+    const password = passwordInput.value;
+    const next = document.querySelector("#next")?.value || "/home";
+    let data_d = { 'email': email, 'password': password, 'next': next };  // A JSON object for /processlogin
+
+    // If either field is empty, just put their cursor in that field and do nothing
+    if (email !== "" && password !== "") {
+        // SEND DATA TO SERVER VIA jQuery.ajax({})
+        jQuery.ajax({
+            url: "/processregister",
+            type: "POST",
+            data: data_d,
+            success: function (returned_data) {
+                returned_data = JSON.parse(returned_data);
+                // /processregister always returns {'success': 1}
+                if (returned_data.success) {
+                    // Show success message
+                    let successDiv = document.getElementById("register_success");
+                    successDiv.style.display = "block";
+                    setTimeout(() => {
+                        successDiv.style.display = "none";
+                        window.location.href = returned_data.next || "/home";
+                    }, 3500);
+                } else {
+                    window.location.href = "/login";  // Reload
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error("AJAX error:", status, error);
+            }
+        });
+    } else {
+        if (password === "") { passwordInput.focus(); }
+        if (email === "") { emailInput.focus(); }  // Second if == it is prioritized
+    }
+}
+
+$(document).ready(function(){
+    $("#login_email").focus();
+    // Allows the user to log in using Enter
+    $("#login_form").keypress(function(event) {
+        if (event.which === 13) { // Enter key
+            checkCredentials();
+            return false;
+        }
+    });
+});
+
+</script>
+{% endblock %}
+
+

@@ -1,0 +1,33 @@
+{% extends 'shared/layout.html' %}
+
+{% block extracss %}
+<style>
+.chat_title {
+    margin: 0 auto;
+    font-family: Helvetica, serif;  /* Providing a backup font */
+    font-size: 24px;
+}
+</style>
+{% endblock %}
+
+
+{% block maincontent %}
+    <div id="whole_main">
+        <br>
+        <p class="chat_title">Chat</p>
+        <div class="spacer"></div>
+    </div>
+{% endblock %}
+
+
+{% block extrajs %}
+<script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+<script src="https://cdn.socket.io/3.1.1/socket.io.min.js"></script>
+<script type="text/javascript" charset="utf-8">
+    // Type here
+</script>
+{% endblock %}
+
+
+
+
