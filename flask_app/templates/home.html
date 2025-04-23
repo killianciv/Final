@@ -113,8 +113,8 @@
             <form id="create_event_form">
                 <input type="text" id="create_name" placeholder="Enter Event Name" title="Enter a name" required>
                 <select id="create_start_time" required>
-                    <option value="" disabled>Select Start Time</option>
-                    <option value="0" selected>12:00 AM</option>
+                    <option value="" disabled selected>Select Start Time</option>
+                    <option value="0">12:00 AM</option>
                     <!-- 1AM-11AM -->
                     {% for hour in range(1, 12) %}
                         <option value="{{ hour }}">{{ "{:2d}:00 AM".format(hour) }}</option>
@@ -127,13 +127,13 @@
                     <option value="0">12:00 AM</option>
                 </select>
                 <select id="create_end_time" required>
-                    <option value="" disabled >Select End Time</option>
+                    <option value="" disabled selected>Select End Time</option>
                     <option value="0">12:00 AM</option>
                     <!-- 1AM-11AM -->
                     {% for hour in range(1, 12) %}
                         <option value="{{ hour }}">{{ "{: 2d}:00 AM".format(hour) }}</option>
                     {% endfor %}
-                    <option value="12" selected>12:00 PM</option>
+                    <option value="12">12:00 PM</option>
                     <!-- 1PM-11PM -->
                     {% for hour in range(1, 12) %}
                         <option value="{{ hour + 12 }}">{{ "{:2d}:00 PM".format(hour) }}</option>
@@ -142,7 +142,7 @@
                 </select>
                 <div>
                     <label id="invitee_label" for="create_invitees">Enter a comma-separated list of invitee emails: </label>
-                    <input type="text" id="create_invitees" placeholder="Ex: me@gmail.com, him@gmail.com" required value="aa@aa.aa">
+                    <input type="text" id="create_invitees" placeholder="Ex: me@gmail.com, him@gmail.com" required>
                 </div>
                 <button type="button" onclick="createAnEvent()">Create Event</button>  {# button prevents default submit behavior #}
             </form>
