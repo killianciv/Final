@@ -11,7 +11,6 @@
     display: none;
     flex-direction: column;
     height: fit-content;
-    {#justify-items: center;#}
     padding: 5px;
     width: 50vw;
     min-width: 300px;
@@ -207,10 +206,13 @@ document.addEventListener("DOMContentLoaded", function () {
     };
     // Generate a list of all the calendar-cells in a rectangle between the start and the current location
     const getCellsInRectangle = (start, end) => {
+        // Where the user clicked
         const startRow = parseInt(start.dataset.row);
         const startCol = parseInt(start.dataset.col);
+        // Where their held-down mouse is
         const endRow = parseInt(end.dataset.row);
         const endCol = parseInt(end.dataset.col);
+        // Direction matters for looping
         const minRow = Math.min(startRow, endRow);
         const maxRow = Math.max(startRow, endRow);
         const minCol = Math.min(startCol, endCol);
@@ -218,6 +220,7 @@ document.addEventListener("DOMContentLoaded", function () {
         let cells = [];
         for (let r = minRow; r <= maxRow; r++) {
             for (let c = minCol; c <= maxCol; c++) {
+                // If there is a time slot there, add that cell to the list of selected cells
                 const cell = getCell(r, c);
                 if (cell) cells.push(cell);
             }
@@ -241,8 +244,9 @@ document.addEventListener("DOMContentLoaded", function () {
         cell.addEventListener("mouseenter", (e) => {
             // If the mouse was first clicked in a cell and is still held down
             if (isMouseDown && startCell) {
-                // Go from selected or unselected to the light blue "preview" to show the contingent rectangle
+                // Un-preview the previously-previewed cells
                 document.querySelectorAll(".calendar-cell.preview").forEach(c => c.classList.remove("preview"));
+                // Highlight the new ones
                 const rectCells = getCellsInRectangle(startCell, cell);
                 rectCells.forEach(c => {
                     c.classList.add("preview");
@@ -281,6 +285,10 @@ function createAnEvent() {
     // Make sure the inputs were answered
     if (!eventName || !startTime || !endTime || !inviteesString || selectedDates.length === 0) {
         alert("Please fill out all fields and select at least one day on the calendar.");
+        return;
+    }
+    if (eventName.length > 100) {
+        alert("Maximum event name length is 100 characters");
         return;
     }
 
@@ -333,6 +341,7 @@ function showJoinEvent() {
     // Toggle it
     if (displayValue === "none") {
         joinEventArea.style.display = "block";
+        joinEventArea.scrollIntoView({ behavior: "smooth" });
     } else {
         joinEventArea.style.display = "none";
     }

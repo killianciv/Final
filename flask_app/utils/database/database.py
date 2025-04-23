@@ -187,6 +187,7 @@ class database:
             return {'failure': 'Duplicate event'}
 
         # Insert the new event
+        creator = creator.strip().lower()  # Normalize
         insert_event = """INSERT INTO events (name, email, start_date, end_date, start_time, end_time)
                           VALUES (%s, %s, %s, %s, %s, %s)"""
         self.query(insert_event, parameters=params)
@@ -194,17 +195,22 @@ class database:
         # Get the newly inserted event_id
         new_event_id = """SELECT MAX(event_id) AS event_id FROM events"""
         event_id = self.query(new_event_id)[0]['event_id']
-        print(f"Event ID: {event_id}")
         for selected_date in selectedDates:
             self.query("INSERT INTO event_dates (event_id, date) VALUES (%s, %s)",
                        parameters=(event_id, selected_date))
-        print(f"Selected dates: {selectedDates}")
-        print(f"Start time: {startTime}")
-        print(f"End time: {endTime}")
 
         # Parse invitee emails
         emails = [email.strip() for email in inviteesString.split(",")]
-        emails.append(creator)
+        if creator not in emails:
+            emails.append(creator)
+        # Remove duplicates and preserve the order
+        seen = set()
+        unique_emails = []
+        for email in emails:
+            if email not in seen:
+                seen.add(email)
+                unique_emails.append(email)
+        emails = unique_emails
         for email in emails:
             insert_invitee = """INSERT INTO invitees (event_id, email)
                                 VALUES (%s, %s)"""
