@@ -1,23 +1,92 @@
 {% extends 'shared/layout.html' %}
-
+{#   outline: 1px solid red; #}
 {% block extrajs %}
+<!-- To use JQuery -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- To use WebSockets: -->
+<script src="https://cdn.socket.io/3.1.1/socket.io.min.js"></script>
 {% endblock %}
 
 {% block extracss %}
 <style>
+#event_info {
+    height: fit-content;
+    width: 200px;
+    justify-content: center;
+}
+#event_info div {
+
+}
+#event_info h4 {
+    display: inline;
+    margin: 0;
+}
+#event_info p {
+    display: inline;
+    margin: 0;
+    font-size: 14px;
+    text-align: center;
+}
+/* Holds everything related to its table */
+.availability-wrapper, .heatmap-wrapper {
+    max-width: 80vw;
+    display: flex;
+}
+.heatmap-wrapper {
+    margin-bottom: 30px;
+}
+/* Right above the grid. Holds status-select */
+#status_holder {
+    display: flex;
+    margin: 3px;
+}
+#status-select {
+
+}
+#availability-grid, #heatmap-grid {
+    overflow-x: auto;  /* Scrolls when needed */
+    overflow-y: visible;
+}
+
+/* The divs that contain several time-labels */
+#time-labels, #heatmap-time-labels {
+    padding: 0 5px;  /* TB LR */
+    display:flex;
+    flex-direction: column;
+    justify-content: space-between;  /* Equal space between everything, force i */
+    background-color: inherit;  /* blanchedalmond */
+    width: 60px;
+    margin-top: 23px; /* The gray area above the beige. Make it match header height (which is 20px) plus the date height minus 5px */
+}
+#heatmap-time-labels {
+    margin-top: 23px;  /* Higher up than the other grid's */
+}
+/* A div containing a time */
+.time-label {
+    margin: 0;  /* TB LR around each time */
+    padding: 0px;  /* TRBL */
+    width: 100%;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 14px;
+    color: #000000;
+    transform: translateY(50%);  /* + is downwards */
+}
+/* The table class used for both the individual availability and the heatmap */
 .availability-table {
     border-collapse: collapse;
 }
+/* Each cell */
 .availability-table th,
 .availability-table td {
-    border: 1px solid #ccc;
+    border: 2px solid #000000;  /* was 1 #ccc */
     width: 40px;
-    height: 24px;
+    height: 20px;
     text-align: center;
 }
+/* Personal availability grid styles */
 .available {
-    background-color: #90ee90;
+    background-color: #57e259;
 }
 .maybe {
     background-color: #ffff99;
@@ -26,7 +95,48 @@
     background-color: #f08080;
 }
 .preview {
-    background-color: lightblue !important;
+    background-color: #b4d6e2 !important;
+}
+.nobreak {
+    white-space: nowrap;
+}
+/* Heatmap styles: #57e259" for 1 available, #14742d for 2, and #024019 for 3+ */
+#legend {
+    display: flex;
+    width: 400px;
+}
+#legend div {
+    flex: 1;
+    height: 40px;
+    padding: 5px;
+    font-size: 14px;
+    text-wrap: auto;
+}
+.maybes {
+    background-color: #ffff00;
+}
+.av-0 {
+    background-color: #e0e0e0;
+}
+.av-1 {
+    background-color: #57e259;
+}
+.av-2 {
+    background-color: #14742d;
+}
+.av-3plus {
+    background-color: #024019;
+    color: #ffffff;
+}
+#bestTime {
+    width: 100%;
+    height: 30px;
+    padding: 2px;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    text-wrap: auto;
 }
 </style>
 {% endblock %}
@@ -34,37 +144,86 @@
 {% block maincontent %}
     <!-- The entire edge-to-edge main section (applies main.css styling)-->
     <div id="whole_main">
-        <h1> Event {{ event_id }} </h1>
-        <p>List of invitees:
-            {% for invitee in invitees %}
-              {{ invitee }}{% if not loop.last %}, {% endif %}
-            {% endfor %}
-        </p>
-        <div id="availability-grid">
+        <div id="event_info">
+            <div>
+                <h4> Event name: </h4>
+                <p>{{ event_name }}</p>
+            </div>
+            <div>
+                <h4>Days: </h4>
+                <p> {{ date_range[0] }} - {{ date_range[1] }}</p>
+            </div>
+            <div>
+                <h4>Invitees:</h4>
+                <p> {% for invitee in invitees %}
+                      {{ invitee }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </p>
+            </div>
+        </div>
+
+        <h2>Personal availability grid:</h2>
+        <div id="status_holder">
             <label for="status-select">Select availability:</label>
             <select id="status-select">
-                <option value="available">Available</option>
-                <option value="maybe">Maybe</option>
-                <option value="unavailable">Unavailable</option>
-            </select>
-            <!-- JS creates the availability table and puts it here -->
-
+            <option value="available">Available</option>
+            <option value="maybe">Maybe</option>
+            <option value="unavailable">Unavailable</option>
+        </select>
         </div>
-    </div>
-    <div class="spacer"></div>
+        <!-- Wrap divs so the times look better beside the table -->
+        <div class="availability-wrapper">
+            <div id="time-labels"></div>
+            <!-- The user's personal availability grid -->
+            <div id="availability-grid">
+                <!-- JS creates their availability table and puts it here -->
+            </div>
+        </div>
 
+        <br><br>
+
+        <h2>Group Heatmap:</h2>
+        <div>
+            <div id="bestTime"></div>
+            <div id="legend">
+                <div class="av-0">0 people available</div>
+                <div class="maybes">2+ 'maybe's</div>
+                <div class="av-1">1 person available</div>
+                <div class="av-2">2 people available</div>
+                <div class="av-3plus">3+ people available</div>
+            </div>
+        </div>
+        <!-- Wrap divs so the times look better beside the table -->
+        <div class="heatmap-wrapper">
+            <div id="heatmap-time-labels"></div>
+            <!-- The heatmap representing the availability of the group -->
+            <div id="heatmap-grid">
+                <!-- JS creates the heatmap grid and puts it here -->
+
+            </div>
+        </div>
+    <div class="spacer"></div>
+    </div>
+
+<!-- Below HTML to defer loading -->
 <script type="text/javascript" charset="utf-8">
 // Turn the HTML variables for this event (taken from the database by routes.py) into JS
-const availability = {{ availability | tojson }};
-const eventDates = {{ dates | tojson }};
-eventDates.sort((a, b) => new Date(a) - new Date(b));
+const availability = {{ availability | tojson }};  // [{"date": "04/23/25", "time": "09:00:00", "status": "available"}, ...]
+const eventDates = {{ dates | tojson }};  // ['04/20/25', '04/21/25', '04/22/25'] in order by date
+const user = {{ user | tojson }};
+{#eventDates.sort((a, b) => new Date(a) - new Date(b));#}
 const eventId = {{ event_id }};
-const times = Array.from({length: 28}, (_, i) => {
-    const hour = Math.floor(i / 2) + 8;
-    const minutes = i % 2 === 0 ? "00" : "30";
-    return `${String(hour).padStart(2, '0')}:${minutes}`;
-});
-
+// Use the start and end times to build several row labels
+const timeRange = {{ times | tojson }};  // should have start_time and end_time
+const times = [];
+for (let hour = timeRange.start_time; hour < timeRange.end_time; hour++) {
+    times.push(`${String(hour).padStart(2, '0')}:00:00`);
+    times.push(`${String(hour).padStart(2, '0')}:30:00`);
+}
+const labelTimes = [];  // One visible label per hour
+for (let hour = timeRange.start_time; hour < timeRange.end_time + 1; hour++) {
+    labelTimes.push(`${String(hour).padStart(2, '0')}:00:00`);
+}
 // Variables to manage single and group time slot clicks
 let selectedStatus = "available";
 let isMouseDown = false;
@@ -76,7 +235,25 @@ function getStatus(date, time) {
     const found = availability.find(a => a.date === date && a.time === time);
     return found ? found.status : "unavailable";
 }
+// Change the color of a cell
+function applyStatus(cell) {
+    const oldStatus = cell.dataset.status;
+    if (oldStatus !== selectedStatus) {
+        cell.classList.remove(oldStatus);
+        cell.classList.add(selectedStatus);
+        cell.dataset.status = selectedStatus;
+    }
+}
 
+// Helper for displaying the times on the grids. hh:mm:ss --> hh:mm AM/PM
+function formatTime12hr(timeStr) {
+    const [hourStr, minuteStr] = timeStr.slice(0, 5).split(':');
+    let hour = parseInt(hourStr);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12;
+    if (hour === 0) hour = 12;
+    return `${hour}:${minuteStr} ${ampm}`;
+}
 // Create the grid using JS so that I can assign data values and event listeners to cells
 function createGrid() {
     const grid = document.getElementById('availability-grid');
@@ -86,10 +263,17 @@ function createGrid() {
     // Header
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    headerRow.innerHTML = `<th>Time</th>`;
     eventDates.forEach((date, col) => {
+        {#const th = document.createElement('th');#}
+        {#day_of_week =#}
+        {#th.textContent = day_of_week and date.slice(0, 5);  // only mm/dd#}
+        {#headerRow.appendChild(th);#}
+
+        const actualDate = new Date(date);
+        const dayOfWeek = actualDate.toLocaleDateString('en-US', { weekday: 'short' }); // e.g. "Mon"
+        const monthDay = date.slice(0, 5);  // e.g. "04/21"
         const th = document.createElement('th');
-        th.textContent = date;
+        th.innerHTML = `${dayOfWeek} ${monthDay}`;
         headerRow.appendChild(th);
     });
     thead.appendChild(headerRow);
@@ -98,17 +282,14 @@ function createGrid() {
     // Body
     const tbody = document.createElement('tbody');
     times.forEach((time, row) => {
-        // One row (tr) per 30-minute timeslot. The row marked 8:00 represents the 8:00 to 8:30 slot
+        // One row (tr) per 30-minute timeslot
         const tr = document.createElement('tr');
-        const timeTd = document.createElement('td');
-        timeTd.textContent = time;
-        tr.appendChild(timeTd);
         // One column entry (td) per event date
         eventDates.forEach((date, col) => {
             const status = getStatus(date, time);
             const td = document.createElement('td');
             td.className = `slot ${status}`;
-            td.dataset.date = date;
+            td.dataset.date = date;  // Stores it exactly as it was passed as eventDates through /view_event
             td.dataset.time = time;
             td.dataset.status = status;  // Each cell knows its own availability status. "unavailable" by default
             td.dataset.row = row;
@@ -137,6 +318,69 @@ function createGrid() {
     table.appendChild(tbody);
     grid.appendChild(table);
 }
+function createHeatmapGrid() {
+    const grid = document.getElementById('heatmap-grid');
+    const table = document.createElement('table');
+    table.className = "availability-table";
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    eventDates.forEach(date => {
+        {#const th = document.createElement('th');#}
+        {#th.textContent = date.slice(0, 5);  // only mm/dd#}
+        {#headerRow.appendChild(th);#}
+        const actualDate = new Date(date);
+        const dayOfWeek = actualDate.toLocaleDateString('en-US', { weekday: 'short' }); // e.g. "Mon"
+        const monthDay = date.slice(0, 5);  // e.g. "04/21"
+        const th = document.createElement('th');
+        th.innerHTML = `${dayOfWeek} ${monthDay}`;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    times.forEach(time => {
+        const tr = document.createElement('tr');
+
+        eventDates.forEach(date => {
+            const td = document.createElement('td');
+            td.className = "heatmap-slot";
+            td.dataset.date = date;  // Stores it exactly as it was passed as eventDates through /view_event
+            td.dataset.time = time;
+            td.style.backgroundColor = "#e0e0e0"; // light grey default
+            tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    grid.appendChild(table);
+}
+// Draw the time labels OUTSIDE the main table so it looks better
+function renderTimeLabels() {
+    const timeLabels = document.getElementById('time-labels');
+    const rowHeight = 20;  // Make sure this matches your CSS cell height
+    labelTimes.forEach((time, row) => {
+        const label = document.createElement('p');
+        label.className = 'time-label';
+        label.style.top = `${row * rowHeight + rowHeight}px`; // offset for midpoint
+        label.textContent = formatTime12hr(time);
+        timeLabels.appendChild(label);
+    });
+}
+function renderHeatmapTimeLabels() {
+    const timeLabels = document.getElementById('heatmap-time-labels');
+    const rowHeight = 20;  // Make sure this matches your CSS cell height
+    labelTimes.forEach((time, row) => {
+        const label = document.createElement('p');
+        label.className = 'time-label';
+        label.style.top = `${row * rowHeight + rowHeight}px`; // offset for midpoint
+        label.textContent = formatTime12hr(time);
+        timeLabels.appendChild(label);
+    });
+}
 
 // Return the list of cells that are (at least partially) inside the rectangle
 //  created by the position you clicked and the current position of your mouse
@@ -158,28 +402,16 @@ function getCellsInRectangle(start, end) {
     }
     return cells;
 }
-
-// Change the color of a cell
-function applyStatus(cell) {
-    const oldStatus = cell.dataset.status;
-    if (oldStatus !== selectedStatus) {
-        cell.classList.remove(oldStatus);
-        cell.classList.add(selectedStatus);
-        cell.dataset.status = selectedStatus;
-    }
-}
-
-// Get a list of availability dictionaries for every square of the database
+// Get a list of availability dictionaries for every highlighted square of the database
 // Ex: [{"date": "2025-04-20", "time": "09:00:00", "status": "available"}, ...]
 function collectAvailability() {
-    return Array.from(document.querySelectorAll(".slot")).map(slot => ({
+    return Array.from(document.querySelectorAll(".preview")).map(slot => ({
         date: slot.dataset.date,
         time: slot.dataset.time,
-        status: slot.dataset.status
+        status: slot.dataset.status // get status based on preview interaction
     }));
 }
-
-// Save the current total availability state of the event calendar as seen on your screen
+// Save the current availability state of an array of squares of the event calendar as seen on your screen
 function submitAvailability(eventId, availabilityData) {
     $.ajax({
         url: "/save_availability",
@@ -189,11 +421,47 @@ function submitAvailability(eventId, availabilityData) {
             event_id: eventId,
             availability: availabilityData
         }),
-        success: () => console.log("Auto-saved availability."),
+        success: () => {
+            console.log("Auto-saved availability.")
+            // Notify the server to recalculate the heatmap and send everyone an updated version
+            socket.emit('send_update', {
+                event_id: eventId,
+                availability: availabilityData,
+                email: user
+            });
+        },
         error: (xhr, status, error) => console.error("Error saving availability:", error)
     });
 }
 
+// Always label single-clicked cells as "preview"
+document.addEventListener("mousedown", (e) => {
+    if (e.target.classList.contains("slot")) {
+        isMouseDown = true;
+        hasInteracted = true;
+        startCell = e.target;
+        // Always mark clicked cell as preview
+        e.target.classList.add("preview");
+    }
+});
+// As soon as the mouse is lifted, save everything THAT CHANGED to the database using AJAX
+document.addEventListener("mouseup", () => {
+    if (isMouseDown && hasInteracted) {
+        const previewCells = document.querySelectorAll(".preview");
+        previewCells.forEach(cell => {
+            applyStatus(cell); // first, update dataset.status
+        });
+        const availabilityData = collectAvailability();  // now dataset.status is correct
+        previewCells.forEach(cell => {
+            cell.classList.remove("preview");  // clean up class after collecting
+        });
+        // Submit the information about all the cells that changed when we lifted the mouse
+        submitAvailability(eventId, availabilityData);
+        hasInteracted = false;
+    }
+    isMouseDown = false;
+    startCell = null;
+});
 // Make the background color of the dropdown match the current availability status
 function updateDropdownBackground() {
     const statusSelect = document.getElementById("status-select");
@@ -206,23 +474,6 @@ function updateDropdownBackground() {
         statusSelect.style.backgroundColor = "#f08080"; // Red
     }
 }
-
-// As soon as the mouse is lifted, save everything to the database using AJAX
-document.addEventListener("mouseup", () => {
-    if (isMouseDown && hasInteracted) {
-        const previewCells = document.querySelectorAll(".preview");
-        previewCells.forEach(cell => {
-            cell.classList.remove("preview");
-            applyStatus(cell);
-        });
-        const availabilityData = collectAvailability();
-        submitAvailability(eventId, availabilityData);
-        hasInteracted = false;
-    }
-    isMouseDown = false;
-    startCell = null;
-});
-
 // Tell the status selector (the dropdown) that it must change its color when its value changes
 document.addEventListener("DOMContentLoaded", () => {
     const statusSelector = document.getElementById("status-select");
@@ -234,7 +485,120 @@ document.addEventListener("DOMContentLoaded", () => {
 
     updateDropdownBackground(); // Initialize the background color
     createGrid();
+    renderTimeLabels();
+    createHeatmapGrid();
+    renderHeatmapTimeLabels();
+    // Make the heatmap initially render by lying about you making an availability update (not ideal):
+    setTimeout(() => {
+        const availabilityData = collectAvailability();
+        submitAvailability(eventId, availabilityData);
+    }, 100);
 });
+
+///////////////////////////////////////////////////////////////////////////////
+// LIVE UPDATES USING WEBSOCKETS
+///////////////////////////////////////////////////////////////////////////////
+var socket;
+// As soon as the DOM is ready, these things (socket creation and
+//  binding certain socket events to functions) happen:
+$(document).ready(function(){
+    // Determine the protocol used by the current window (protocol/event/<event_id>)
+    var protocol = window.location.protocol.includes("https") ? "https://" : "http://";
+    // Make a web socket using that protocol (Jinja uses HTTP by default)
+    socket = io.connect(protocol + document.domain + ':' + location.port + '/chat');
+    // As soon as you opened this event's page, the prior line ran, which makes the
+    //  socket emit connect(). That happens on its own, but now we want to send
+    //  an 'I have joined the event room' message to all other clients in the room.
+    socket.on('connect', function() {
+        socket.emit('joined', { event_id: eventId });
+    });
+
+    // When a user tells routes.py they have updated their availability, it
+    //  will emit a heatmap_update message to this client and all others. When
+    //  that message is received, use the received data to overwrite the old heatmap
+    socket.on('heatmap_update', function(data) {
+        // data is a dictionary. the key 'heatmap' has a value which is the heatmap
+        updateHeatmap(data.heatmap);
+    });
+});
+
+// Helper function for calculating best time
+function add30Minutes(timeStr) {
+    // timeStr is in "HH:MM" 24-hour format (e.g., "13:30")
+    const [hour, minute] = timeStr.split(":").map(Number);
+    const date = new Date();
+    date.setHours(hour, minute + 30);
+
+    const h = date.getHours().toString().padStart(2, "0");
+    const m = date.getMinutes().toString().padStart(2, "0");
+    return `${h}:${m}`;
+}
+
+// routes.py emits 'heatmap_update' after a user's newly-updated availability
+//  grid was updated. This function is called after that message is heard.
+// heatmapData is in the form
+// {'Fri 04/25': {'08:00': {'available': 0, 'maybe': 0, 'unavailable': 1},
+//  '08:30': {'available': 1, 'maybe': 0, 'unavailable': 0}, ...}
+// If at least one person is available for a slot, it is green. The shade of green
+//  depends on how many users are available (1 = light green, 2 = medium, 3 = dark).
+// If more than one person has marked a cell as "maybe", and no one is available for it, it becomes yellow
+// If no user has marked a cell as "available" or "maybe", then the cell must appear in light grey.
+function updateHeatmap(heatmapData) {
+    let maxAvailable = 0;
+    let leastUnavailable = Infinity;
+    let bestTime = "";
+    let bestDate = "";
+    let foundViableSlot = false;
+
+    for (const date in heatmapData) {
+        for (const time in heatmapData[date]) {
+            const cell = document.querySelector(`.heatmap-slot[data-date="${date}"][data-time="${time}"]`);
+            if (!cell) continue;
+
+            const counts = heatmapData[date][time];
+            const { available, maybe, unavailable } = counts;
+
+            // Must have the most people available and have fewer people unavailable than the current best
+            // If they tie on both of those, the earlier one is better.
+            // Determine if this slot is the new "best time"
+            if (
+                available > maxAvailable ||
+                (available === maxAvailable && unavailable < leastUnavailable) ||
+                (
+                    available === maxAvailable &&
+                    unavailable === leastUnavailable &&
+                    (bestDate === "" || new Date(date + " " + time) < new Date(bestDate + " " + bestTime))
+                )
+            ) {
+                maxAvailable = available;
+                leastUnavailable = unavailable;
+                bestTime = time;
+                bestDate = date;
+            }
+
+            if (available > 0) {
+                // If someone is available, it's a viable slot
+                foundViableSlot = true;
+                // The more available people, the darker the green
+                const intensity = Math.min(available, 3);
+                const colors = ["#57e259", "#14742d", "#024019"];
+                cell.style.backgroundColor = colors[intensity - 1];
+            } else if (maybe > 1) {
+                cell.style.backgroundColor = "#ffff00"; // yellow
+            } else {
+                cell.style.backgroundColor = "#e0e0e0"; // light grey
+            }
+        }
+    }
+    const bestTimeElement = document.getElementById("bestTime");
+    if (foundViableSlot && bestTime && bestDate) {
+        const endTime = add30Minutes(bestTime);
+        bestTimeElement.innerHTML = `The best time to meet is ${bestDate} from ${formatTime12hr(bestTime)} to ${formatTime12hr(endTime)}`;
+    } else {
+        bestTimeElement.innerHTML = "There is no best time to meet";
+    }
+}
+
 </script>
 
 {% endblock %}

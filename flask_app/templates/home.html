@@ -5,43 +5,69 @@
 
 {% block extracss %}
 <style>
-/* Divs holding the forms */
+/* Divs holding the stuff related to creating and joining events */
 #create_event, #join_event {
+    border: 3px solid #000000;
     display: none;
     flex-direction: column;
-    align-items: center;
-    width: 50%;
+    height: fit-content;
+    {#justify-items: center;#}
+    padding: 5px;
+    width: 50vw;
+    min-width: 300px;
+}
+#create_event_title {
+    margin: 5px 0;
+    padding: 2px 5px;
+}
+#join_event_title {
+    margin: 5px 0;
+    padding: 5px;
+    justify-self: center;
+}
+
+/* The form (above the dates) */
+#create_event_form, #join_event_form {
+    margin: 5px 0;
+}
+#invitee_label {
+    font-weight: bold;
+    padding: 2px 5px;
+}
+#create_invitees {
+    width: 240px;
+}
+
+/* Wraps the days and the dates */
+.calendar-wrapper {
+    width: 100%;
     height: fit-content;
 }
-/* The forms */
-#create_event_form, #join_event_form {
-
-}
-.calendar-wrapper {
-    max-width: 700px;
-    /*height: fit-content;*/
-    margin: auto;
-    margin-top: 20px;
-}
-
+/* Holds all the dates. Above the grid */
 .calendar-header {
     display: grid;
+    gap: 4px;
+    background-color: #000000;
+    border: 4px solid #000000;
+    border-bottom: none;
     grid-template-columns: repeat(7, 1fr);
     text-align: center;
     font-weight: bold;
-    margin-bottom: 5px;
 }
+/* Each day of the week is a div */
 .calendar-header div {
     padding: 10px 0;
     background-color: #f2f2f2;
     border-bottom: 2px solid #aaa;
 }
-
+/* Holds 35 dates */
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     grid-template-rows: repeat(5, 1fr);
     gap: 4px;
+    background-color: #000000;
+    border: 4px solid #000000;
 }
 .calendar-cell {
     background-color: #fff;
@@ -57,7 +83,7 @@
     background-color: #d0e8ff;
 }
 .calendar-cell.selected {
-    background-color: #0253a8;
+    background-color: var(--primary-color); /*#0253a8;*/
     color: white;
     font-weight: bold;
 }
@@ -69,8 +95,8 @@
     background-color: #999999;
 }
 .calendar-cell.preview {
-    background-color: #a0cfff;
-    color: black;
+    background-color: #d0e8ff;
+    color: #000000;
 }
 </style>
 {% endblock %}
@@ -81,10 +107,10 @@
         <br>
         <button onClick="showCreateNewEvent()">Create a new event</button>
         <button onClick="showJoinEvent()">Join an event</button>
+        <br>
 
         <div id="create_event">
-            <h1>Create an event:</h1>
-            <h2>Fill out the following fields</h2>
+            <h2 id="create_event_title">To create an event, fill out the following fields</h2>
             <form id="create_event_form">
                 <input type="text" id="create_name" placeholder="Enter Event Name" title="Enter a name" required>
                 <select id="create_start_time" required>
@@ -102,7 +128,7 @@
                     <option value="0">12:00 AM</option>
                 </select>
                 <select id="create_end_time" required>
-                    <option value="" disabled>Select End Time</option>
+                    <option value="" disabled >Select End Time</option>
                     <option value="0">12:00 AM</option>
                     <!-- 1AM-11AM -->
                     {% for hour in range(1, 12) %}
@@ -115,7 +141,10 @@
                     {% endfor %}
                     <option value="0">12:00 AM</option>
                 </select>
-                <input type="text" id="create_invitees" placeholder="Enter a list of emails of people to invite" required value="temp@gmail.com">
+                <div>
+                    <label id="invitee_label" for="create_invitees">Enter a comma-separated list of invitee emails: </label>
+                    <input type="text" id="create_invitees" placeholder="Ex: me@gmail.com, him@gmail.com" required value="aa@aa.aa">
+                </div>
                 <button type="button" onclick="createAnEvent()">Create Event</button>  {# button prevents default submit behavior #}
             </form>
             <!-- X -->
@@ -136,7 +165,8 @@
                                  data-date="{{ calendar_days[index] }}"
                                  data-row="{{ i }}"
                                  data-col="{{ j }}">
-                                {{ calendar_days[index] }}
+                                <!-- Display just the month and date; "10/12/24" = "10/12" -->
+                                {{ calendar_days[index][:5] }}
                             </div>
                         {% endif %}
                     {% endfor %}
@@ -146,7 +176,10 @@
             <!-- X -->
         </div>
 
+        <br>
+
         <div id="join_event">
+            <h1 id="join_event_title">Join Events </h1>
             {% if invites %}
                 <!-- invites is a dictionary {event_id: {event_name, creator_email, date range of the event}, ...} -->
                 {% for event in invites %}
@@ -156,11 +189,12 @@
                     <h4>Link: <a href="event/{{event['event_id']}}">Click to view the event</a></h4>
                 {% endfor %}
             {% else %}
-                <h1>No invites</h1>
+                <h3>No invites</h3>
             {% endif %}
         </div>
+
+        <div class="spacer"></div>
     </div>
-    <div class="spacer"></div>
 
 <!-- Below HTML to defer loading -->
 <script type="text/javascript" charset="utf-8">
@@ -270,7 +304,7 @@ function createAnEvent() {
                 // Flask should make a page for it
                 window.location.href = returned_data['eventpage'];
             } else {
-                alert("Something went wrong.");
+                alert("Something went wrong. Check the input fields and try again");
             }
         },
         error: function (xhr, status, error) {
@@ -289,6 +323,7 @@ function showCreateNewEvent() {
     } else {
         createEventArea.style.display = "none";
     }
+    $("#create_name").focus();
 }
 
 function showJoinEvent() {

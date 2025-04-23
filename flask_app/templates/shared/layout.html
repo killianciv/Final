@@ -20,17 +20,17 @@
         <article>
         <!-- Nav bar -->
         <div id="navbar">
-            {% if user == 'Unknown' %}
-            <p>Not signed in</p>
-            {% else %}
-            <p>Hello <b>{{user}}</b></p>
-            {% endif %}
-            <a href="/home">Homepage</a>
-            {% if user == 'Unknown' %}
-            <a href="/login"> Login </a>
-            {% else %}
-            <a href="/logout"> Logout </a>
-            {% endif %}
+            <div id="links">
+                <p> {% if user == 'Unknown' %} Not signed in
+                    {% else %} Signed in as <span class="username">{{user}}</span> {% endif %}
+                </p>
+                <a href="/home">Homepage</a>
+                {% if user == 'Unknown' %}
+                <a href="/login"> Login </a>
+                {% else %}
+                <a href="/logout"> Logout </a>
+                {% endif %}
+            </div>
         </div>
 
         <main>
@@ -39,28 +39,6 @@
 
         <!-- The footer of the file -->
         <div id="footer">
-            <div class="info">
-                <div class="info_half left">
-                    <h4>Main Location</h4>
-                    <p><a href="https://goo.gl/maps/ZovK849E2666A6qRA" target="_blank">Name of building
-                        <br>12321 Something Something St
-                        <br>City Name, MI 45654</a>
-                    </p>
-                </div>
-                <div class="info_half right">
-                    <h3>Questions?</h3>
-                    <h4>Click on any of the following:</h4>
-                    {# This makes it use Apple's mail #}
-                    <p class="email"><a href="mailto:fakeemail@gmail.com?subject=Clinic%20inquiry">>>  fakeemail@gmail.com  <<</a></p>
-		            <p class="phone"><a href="tel:&#x202A;123-456-7890&#x202C;" target="_blank">>>  123-456-7890&#x202C;  <<</a></p>
-                    <p class="insta">
-                        <a href="https://www.linkedin.com/in/killian-civiero/" class="image_link" target="_blank">
-                            <img src="../../static/main/images/instagram.png" class="insta_png" alt="Instagram link" loading="lazy">
-                        </a>
-                    </p>
-                </div>
-            </div>
-
             <p class="copy">&copy; Killian Civiero</p>
         </div>
 

@@ -37,10 +37,17 @@ def getUser():
     else:
         return 'Unknown'
 
+# Global variable to track the number of failed login attempts. It is global
+#   because it must persist requests across both /login and /processlogin
+failed_attempts = 0
+
 @app.route('/login')
 def login():
+    global failed_attempts
     next_page = request.args.get('next') or '/home'  # Set it or else it becomes 'None'
-    return render_template('login.html', user='Unknown', next=next_page)
+    if not next_page or next_page == '/login':  # Do not let next="/login"
+        next_page = '/home'
+    return render_template('login.html', user='Unknown', failed_attempts=failed_attempts, next=next_page)
 
 @app.route('/logout')
 def logout():
@@ -49,45 +56,60 @@ def logout():
 
 @app.route('/processlogin', methods = ["POST","GET"])
 def processlogin():
+    global failed_attempts
     # Parse the form sent asynchronously by checkCredentials(). Concerned with the inputs name="email" and name="password"
     form_fields = dict((key, request.form.getlist(key)[0]) for key in list(request.form.keys()))
     print(f"Logged in with {form_fields['email']}")
     # Get next parameter
     next_page = form_fields.get('next', '/home')  # Default to /home if no next is provided
+    if not next_page or next_page == '/login':  # Do not let next="/login"
+        next_page = '/home'
     # Call authenticate(). Returns {'success': 1} or {'failure': 0}
     auth_status = db.authenticate(form_fields['email'], form_fields['password'])
     if auth_status.get('success'):  # Use .get() to avoid KeyError
         try:
             # The session stores the encrypted email of the user
             session['email'] = db.reversibleEncrypt('encrypt', form_fields['email'])
+            failed_attempts = 0  # Reset failed attempts on success
         except Exception as e:
             print(f"Encryption error: {e}")
             return json.dumps({'success': 0, 'error': 'Encryption failed'})
+    else:
+        failed_attempts += 1  # Increment failed attempts on failure
 
     auth_status['next'] = next_page  # Add next page to response
     return json.dumps(auth_status)
 
 @app.route('/processregister', methods=["POST", "GET"])
 def processregister():
+    global failed_attempts
     form_fields = dict((key, request.form.getlist(key)[0]) for key in list(request.form.keys()))
     next_page = form_fields.get('next', '/home')  # Default to /home if no next is provided
+    if not next_page or next_page == '/login':  # Do not let next="/login"
+        next_page = '/home'
 
     # Create the user
-    print(f"Geristered with {form_fields['email']}")
+    print(f"Registered with {form_fields['email']}")
     registration_status = db.createUser(form_fields['email'], form_fields['password'])
 
     # Regardless of success/failure, always say it succeeded (to deter brute force)
     try:
         session['email'] = db.reversibleEncrypt('encrypt', form_fields['email'])  # Log them in
+        failed_attempts = 0  # Reset failed attempts
     except Exception as e:
         print(f"Encryption error: {e}")
-        return json.dumps({'success': 1, 'next': next_page, 'error': 'Encryption failed'})
+        return json.dumps({'success': 1, 'next': '/home', 'error': 'Encryption failed'})
 
     return json.dumps({'success': 1, 'next': next_page})
 
 #######################################################################################
 # MAIN STUFF I WORK ON
 #######################################################################################
+# Important:
+# All dates are in the format "Fri 04/22"
+# startTime and endTime are integers in [0, 24] like military time
+# availability times are like "09:30:00"
+
 @app.route('/')
 def root():
     return redirect('/login')
@@ -106,20 +128,29 @@ def home():
     day_index = {'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6}
     first_day_of_week = today.strftime('%a')  # e.g., 'Fri' the current day
     offset = day_index[first_day_of_week]
-    calendar_days = [(today + timedelta(days=i)).strftime('%a %m/%d') for i in range(-offset, 35-offset)]
+    ### calendar_days = [(today + timedelta(days=i)).strftime('%a %m/%d') for i in range(-offset, 35-offset)]
+    calendar_days = [(today + timedelta(days=i)).strftime('%m/%d/%y') for i in range(-offset, 35 - offset)]
 
     # Stuff needed for the Join_Event div:
     invites = db.getJoinEventInvites(getUser())
 
     return render_template('home.html', user=getUser(), next=next_page, calendar_days=calendar_days,
-                           first_day_of_week=first_day_of_week, today_str=today.strftime('%a %m/%d'), invites=invites)
+                           first_day_of_week=first_day_of_week, today_str=today.strftime('%m/%d/%y'), invites=invites)
 
 @app.route('/createevent', methods=["POST"])
 def createevent():
     # Grab the data_d sent asynchronously by home.html's createAnEvent(), then create the event
     data = request.get_json()
-    start_date = min(data['selected_dates'])
-    end_date = max(data['selected_dates'])
+
+    # Convert strings without days of week, like "04/21/25", to datetime objects
+    def extract_date(d):
+        # return datetime.strptime(d.split()[1], "%m/%d/%y") worked when I had the day in front like "Fri ..."
+        return datetime.strptime(d, "%m/%d/%y")
+    sorted_dates = sorted(data['selected_dates'], key=extract_date)
+
+    start_date = sorted_dates[0]
+    end_date = sorted_dates[-1]
+
     # getUser() returns the same decrypted email that is in the database
     status = db.createEvent(
         creator=getUser(),
@@ -155,19 +186,31 @@ def view_event(event_id):
     query = """SELECT * FROM invitees WHERE event_id = %s AND email = %s"""
     is_invited = db.query(query, parameters=(event_id, user_email))
     if not (is_creator or is_invited):
-        # return "Access Denied", 403
-        next_page = '/login'
-        return redirect(url_for('login', next=next_page))
+        return redirect(url_for('home'))
 
     # Fetch necessary information about the event
     invitees = db.query("SELECT email FROM invitees WHERE event_id = %s", (event_id,))
     invitees = [row["email"] for row in invitees]  # A list of emails
-    dates = db.getEventDates(event_id)
+    date_range = db.getEventDateRange(event_id)  # ('04/20/25', '04/28/25')
+    dates = db.getEventDates(event_id)  # ['04/20/25', '04/21/25', '04/22/25']
+    times = db.getEventTimeRange(event_id)  # { 'start_time': 9, 'end_time': 17 }
+    event_name = db.getEventName(event_id)
     availability = db.getAvailability(event_id, getUser())
-    return render_template("event.html", user=getUser(), invitees=invitees, event_id=event_id,
-                           availability=availability, dates=dates)
+    return render_template("event.html", user=getUser(), invitees=invitees,
+                           event_id=event_id, event_name = event_name, availability=availability,
+                           date_range=date_range, dates=dates, times=times)
 
-# Asynchronous requests received from event.html's JS
+#######################################################################################
+# AVAILABILITY RELATED
+#######################################################################################
+@socketio.on('joined', namespace='/chat')
+def handle_join(data):
+    event_id = data.get('event_id')
+    join_room(f'event_{event_id}')
+    print(f"{getUser()} joined room: event_{event_id}")
+
+# Save the availability data of the whole grid. This function is called by the
+#  asynchronous request received from event.html's JS after a 'mouseup'.
 @app.route('/save_availability', methods=['POST'])
 @login_required
 def save_availability():
@@ -181,60 +224,21 @@ def save_availability():
     db.saveAvailability(event_id, email, availability)
     return jsonify(success=True)
 
+# Someone just updated their availability grid, so I need to send the updated
+#  heatmap to everybody. No data saving is needed; the JS line before the one
+#  that called this already saved the data.
+@socketio.on('send_update', namespace='/chat')
+def handle_send_update(data):
+    event_id = data['event_id']
+    availability = data['availability']
+    email = data['email']
 
-#######################################################################################
-# CHATROOM RELATED
-#######################################################################################
-users_in_chat = set()
-@app.route('/chat')
-def chat():
-    if getUser() == 'Unknown':
-        # Save the original URL and redirect to /login with a `next` parameter
-        return redirect(url_for('login', next=request.path))
-    # Otherwise, just display /chat.
-    return render_template('chat.html', user=getUser())
-# After your DOM loaded, chat.html's script connected to the socket and automatically
-#  sent a socket.emit('joined'). Now emit a 'status' message that says you (the getUser())
-#  have joined the room. Even the sender will get this message
-@socketio.on('joined', namespace='/chat')
-def joined(message):
-    sender_username = getUser()
-    users_in_chat.add(sender_username)  # Track user as "in the chat"
-    join_room('main')
-    emit('status', {'sender_username': sender_username, 'msg': getUser() + ' has entered the room.', 'style': 'width: 100%;color:blue;text-align: right'}, room='main')
-# You are leaving the room, which you did by clicking the <input> in chat.html
-#  that sends a socket emission titled 'left'. Now emit a 'status' message that
-#  says you (the getUser()) have left the room
-@socketio.on('left', namespace='/chat')
-def left(message):
-    sender_username = getUser()
-    # Only let them leave the room if they are in the room
-    if sender_username in users_in_chat:
-        users_in_chat.remove(sender_username)
-        leave_room('main')
-        emit('status', {'sender_username': sender_username, 'msg': getUser() + ' has left the room.', 'style':'width:100%;'}, room='main')
-# I must make a URL that does the same thing as socket.emit('left') because if
-#  the socket doesn't work on unload, I need to use a beacon, and all they
-#  can do is redirection
-@app.route('/leave_chat')
-def leave_chat():
-    # When I click 'Leave chat', I will redirect here
-    # In here I cannot do socketio.emit('left', {}) because this code runs in the server,
-    #  and an emit() sent from a server only goes to clients, which means my
-    #  request for this exact server to run the 'left' function would fail.
-    left({})  # This directly calls the server-side function
-    return {'success': True}  # Response for sendBeacon()
-# Step 2 for sending messages: Receives and reads incoming and outgoing messages
-#   sent through chat.html's sendMessage()'s socket.emit().
-@socketio.on('message', namespace='/chat')
-def message(data):
-    # This is being processed on the server-side of the sender, before being
-    #  sent to other members of the server. So whoever sent the message will
-    #  be returned by getUser().
-    sender_username = getUser()
-    msg_text = data.get('msg')
-    # Send the message and username to ALL users
-    emit('message', {'sender_username': sender_username, 'msg': msg_text}, room='main')
+    print(f"Received send_update emission from {email} for room 'event_{event_id}'")
+
+    # Get group heatmap and emit
+    heatmap = db.getHeatmap(event_id)
+    print(f"Got the heatmap: \n{heatmap}")
+    emit('heatmap_update', {'heatmap': heatmap}, room=f'event_{event_id}')
 
 #######################################################################################
 # OTHER

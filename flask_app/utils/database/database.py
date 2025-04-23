@@ -166,14 +166,17 @@ class database:
 #######################################################################################
 # HOMEPAGE RELATED
 #######################################################################################
+    # All dates were in the format "Fri 04/22"
+    # Dates are now like "01/22/25"
+    # startTime and endTime are integers in [0, 24] like military time
     def createEvent(self, creator, eventName, startDate, endDate, selectedDates, startTime, endTime, inviteesString):
         # creator is the decrypted user email
-        print("Inserting event with email:", creator)
-        # Check if invitees list is in the right format (csv, optional space, required __@__.com)
-        invitee_pattern = r"^([\w\.-]+@[\w\.-]+\.\w{2,}\s*,?\s*)+$"  # Ex: like johm@email.com,john2@email.com, john@email.com
-        valid_invitee = re.match(invitee_pattern, inviteesString.strip())
-        if not valid_invitee:
-            return {'failure': 'Invalid format for invitees list'}
+        print("Creator of the new event:", creator)
+        # # Check if invitees list is in the right format (csv, optional space, required __@__.com)
+        # invitee_pattern = r"^([\w\.-]+@[\w\.-]+\.\w{2,}\s*,?\s*)+$"  # Ex: like johm@email.com,john2@email.com, john@email.com
+        # valid_invitee = re.match(invitee_pattern, inviteesString.strip())
+        # if not valid_invitee:
+        #     return {'failure': 'Invalid format for invitees list'}
         # Check if an identical event already exists. Ignores start and end dates
         query = """SELECT * FROM events 
                    WHERE name = %s AND email = %s AND start_time = %s AND 
@@ -196,6 +199,9 @@ class database:
             self.query("INSERT INTO event_dates (event_id, date) VALUES (%s, %s)",
                        parameters=(event_id, selected_date))
         print(f"Selected dates: {selectedDates}")
+        print(f"Start time: {startTime}")
+        print(f"End time: {endTime}")
+
         # Parse invitee emails
         emails = [email.strip() for email in inviteesString.split(",")]
         emails.append(creator)
@@ -226,30 +232,38 @@ class database:
 #######################################################################################
 # EVENT PAGE RELATED
 #######################################################################################
-    # The event page will have a vertical column for each day, each labeled with a date.
-    # On the left side of the availability div, it will have the hours like 8:00, 9:00,
-    #  etc. with lines every half hour. Each date is horizontally diced into 30-minute
-    #  time increments. It starts as totally unavailable.
-    # Each invitee visiting the page is allowed to enter their availability by
-    #  selecting an availability mode (available, maybe, unavailable) from a dropdown
-    #  and then clicking
-    #  a square or dragging across several squares or even across several days to apply
-    #  that availability status to that half-hour slot.
-    # I need to set up an availability database to save this information as well
+    def getEventName(self, event_id):
+        query = "SELECT name FROM events WHERE event_id = %s"
+        rows = self.query(query, parameters=(event_id,))
+        return rows[0]['name']
+
+    def getEventDateRange(self, event_id):
+        query = "SELECT start_date, end_date FROM events WHERE event_id = %s"
+        result = self.query(query, parameters=(event_id,))
+        return (result[0]['start_date'], result[0]['end_date']) if result else None
+
+    # # Returns ['Sun 04/20', 'Mon 04/21', 'Tue 04/22', 'Wed 04/23'] in order by date not by the day of week
+    # def getEventDates(self, event_id):
+    #     query = "SELECT date FROM event_dates WHERE event_id = %s ORDER BY date ASC"
+    #     return [row['date'] for row in self.query(query, parameters=(event_id,))]
+    # Returns ['04/20/25', '04/21/25', '04/22/25'] in order by date
     def getEventDates(self, event_id):
         query = "SELECT date FROM event_dates WHERE event_id = %s ORDER BY date ASC"
         return [row['date'] for row in self.query(query, parameters=(event_id,))]
 
+    # Get the start and end times (ints in [0, 24]) of the event. Returns { 'start_time': 9, 'end_time': 17 }
+    def getEventTimeRange(self, event_id):
+        query = "SELECT start_time, end_time FROM events WHERE event_id = %s"
+        result = self.query(query, parameters=(event_id,))
+        return result[0] if result else None
+
+    # The availability data is in a different format than what is used
+    #  for getEventTimes because times can be by the half hour
+    # availability_data is like:
+    #   [{"date": "04/23/25", "time": "09:00:00", "status": "available"},
+    #    {"date": "04/23/25", "time": "09:30:00", "status": "maybe"}, ...]
     def saveAvailability(self, event_id, user_email, availability_data):
-        """
-            availability_data is a list of dictionaries like:
-            [
-                {"date": "2025-04-20", "time": "09:00:00", "status": "available"},
-                {"date": "2025-04-20", "time": "09:30:00", "status": "maybe"},
-                ...
-            ]
-        """
-        for entry in availability_data:
+        for entry in availability_data:  # For every cell we have data about
             query = """
                     INSERT INTO availability (event_id, email, date, time, status)
                     VALUES (%s, %s, %s, %s, %s)
@@ -257,6 +271,9 @@ class database:
                 """
             self.query(query, parameters=(event_id, user_email, entry['date'], entry['time'], entry['status']))
 
+    # Get the user's availability status for all squares. Format:
+    # {'04/24/25': {'08:00:00': {'available': 0, 'maybe': 0, 'unavailable': 1},
+    #               '08:30:00': {'available': 1, 'maybe': 0, 'unavailable': 0}, ...} ..}
     def getAvailability(self, event_id, user_email):
         # Get their availability for each half-hour increment of each day of the event
         query = """
@@ -264,6 +281,35 @@ class database:
             WHERE event_id = %s AND email = %s
         """
         return self.query(query, parameters=(event_id, user_email))
+
+    # Return the heatmap for all squares. Format:
+    # {'04/24/25': {'08:00:00': {'available': 0, 'maybe': 0, 'unavailable': 1},
+    #   '08:30:00': {'available': 1, 'maybe': 0, 'unavailable': 0}, ...}
+    def getHeatmap(self, event_id):
+        rows = self.query("""
+            SELECT date, time, status, COUNT(*) as count
+            FROM availability
+            WHERE event_id = %s
+            GROUP BY date, time, status
+        """, (event_id,))
+
+        heatmap = {}
+        for row in rows:
+            date = row['date']
+            time = row['time']
+            status = row['status']
+            count = row['count']
+
+            if date not in heatmap:
+                heatmap[date] = {}
+            if time not in heatmap[date]:
+                heatmap[date][time] = {'available': 0, 'maybe': 0, 'unavailable': 0}
+
+            heatmap[date][time][status] = count
+
+        print(f"Heatmap: {heatmap}")
+        return heatmap
+
 
 
 

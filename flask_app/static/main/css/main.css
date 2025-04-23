@@ -1,6 +1,6 @@
-* {
-   outline: 1px solid red; /* Debugging: See if anything extends past the viewport */
-}
+/** {*/
+/*   outline: 1px solid red; !* Debugging: See if anything extends past the viewport *!*/
+/*}*/
 :root {
     --primary-color: #4747d8;  /* RGB is 71,71,216 */
     --orange: #f87c14;  /* RGB is 248,124,20 */
@@ -15,12 +15,30 @@ html, body {
     margin: 0; /* No whitespace around the edges of everything */
 }
 #navbar {
+    width: 100%;
+    height: fit-content;
+    background-color: var(--navbar-color);
+}
+#links {
     display: flex;
     flex-direction: column;
-    width: 100%;
+    justify-self: center;
+    width: fit-content;
     align-items: center;
-    padding: 20px;
+    padding: 15px;
+    background-color: var(--navbar-color);
 }
+#links p, #links a {
+    margin: 5px 0;
+    font-size: 16px;
+    font-weight: normal;
+    color: #ffffff;
+}
+.username {
+    font-weight: bold;
+}
+
+
 /* Entire edge-to-edge main section */
 #whole_main {
     background-color: #CCCCCC;
@@ -34,7 +52,7 @@ html, body {
 /* Outside of #whole_main */
 .spacer {
     width: 100%;
-    height: 50vh;
+    height: 70vh;
     background-color: inherit;
 }
 
@@ -48,6 +66,7 @@ html, body {
 */
 .login {
     display: flex;
+    flex-direction: column;
     background-color: inherit;
     width: 60vw;
     height: 30vh;
@@ -69,6 +88,15 @@ html, body {
     color: #158215;
     font-weight: bold;
     text-align: center;
+}
+.attempts  {
+    width: fit-content;
+    margin: 10px 0;
+}
+.attempts h3 {
+    display: inline;
+    margin: 2px 0;  /* TB LR */
+    color: #ff0000;
 }
 
 
@@ -101,77 +129,13 @@ html, body {
     height: fit-content;
     text-align: center;
 }
-/* .info Contains left and right halves */
-.info {
-    display: flex;
-    height: fit-content;
-    background-color: var(--primary-color);
-}
-.info_half {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    height: 300px;
-    background-color: var(--navbar-color);
-}
-.left {
-    align-items: flex-start;
-}
-.right {
-    align-items: flex-end;
-}
-#footer h3, #footer h4 {
-    font-size: 24px;
-    color: var(--footer-font-color);
-    margin: 5px;
-}
-#footer h4 {
-    font-size: 18px;
-}
-#footer p {
-    font-family: Verdana, serif;
-    text-align: center;
-    margin: 5px;
-    font-size: 14px;
-    color: var(--footer-font-color);
-}
-#footer .left, #footer .left p {
-    text-align: left;
-}  /* Force text to the edge */
-#footer .right, #footer .right p {
-    text-align: right;
-}  /* Force text to the edge */
-#footer a {
-    color: var(--footer-font-color);
-    text-decoration: underline 1px var(--footer-font-color);
-    text-underline-offset: 2px;  /* Gap between letters and line */
-}
-#footer a:hover  {
-    opacity: 1;
-    color: var(--orange);
-    text-decoration: underline 1px var(--orange);
-}
-.phone {
-
-}
-.email {
-
-}
-.insta {
-    display: flex;
-    align-items: flex-end;
-    height: fit-content;
-}
-.insta img {
-    height: 50px;
-}
 #footer .copy {  /* Must be this specific because the basic footer p styling is */
     align-content: center;  /* Vertically */
     justify-content: center;
     height: 60px;
     color: #ffffff;
     background-color: #4747d8;
-    margin: 20px 0 0 0;  /* TRBL */
+    margin: 0;
 }
 
 
