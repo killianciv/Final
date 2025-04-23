@@ -31,7 +31,7 @@
             </form>
         </div>
         <!-- Success messages -->
-        <div id="login_success"> Login successful! Redirecting... </div>
+        <div id="login_success"> Logging in...  </div>
         <div id="register_success"> Registration successful! Redirecting... </div>
         <div class="attempts">
             {% if failed_attempts > 0 %}
@@ -71,9 +71,15 @@ function checkCredentials() {
                         //  the returned_data of the prior request (the 'next' variable
                         //  above) that was injected before loading this page
                         window.location.href = returned_data.next || "/home";
-                    }, 3500);
+                    }, 2500);
                 } else {
-                    window.location.href = "/login";  // Reload
+                    // Show success message
+                    let successDiv = document.getElementById("login_success");
+                    successDiv.style.display = "block";
+                    // Delay redirect on failure too
+                    setTimeout(() => {
+                        window.location.href = "/login";  // Reload
+                    }, 2500);
                 }
             },
             error: function (xhr, status, error) {
@@ -111,7 +117,7 @@ function register() {
                     setTimeout(() => {
                         successDiv.style.display = "none";
                         window.location.href = returned_data.next || "/home";
-                    }, 3500);
+                    }, 2500);
                 } else {
                     window.location.href = "/login";  // Reload
                 }
