@@ -275,14 +275,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
 function createAnEvent() {
     const eventName = document.querySelector("#create_name").value;
-    const startTime = document.querySelector("#create_start_time").value;
-    const endTime = document.querySelector("#create_end_time").value;
+    const startTime = document.querySelector("#create_start_time").value;  // The string
+    const startHr = parseInt(startTime);  // 0 - 24
+    const endTime = document.querySelector("#create_end_time").value;  // The string
+    const endHr = parseInt(endTime);  // 0 - 24
     const inviteesString = document.querySelector("#create_invitees").value;
     // An array because selected days don't have to be consecutive
     const selectedDates = Array.from(document.querySelectorAll(".calendar-cell.selected"))
                                .map(cell => cell.dataset.date);
 
-    // Make sure the inputs were answered
+    // Make sure the inputs were answered with valid answers
     if (!eventName || !startTime || !endTime || !inviteesString || selectedDates.length === 0) {
         alert("Please fill out all fields and select at least one day on the calendar.");
         return;
@@ -291,6 +293,17 @@ function createAnEvent() {
         alert("Maximum event name length is 100 characters");
         return;
     }
+    // They cannot go exactly 24 hours
+    if (startHr === 0 && endHr === 0) {
+        alert("12:00 AM to 12:00 AM is not a valid time range.");
+        return;
+    }
+    // Make sure they don't wrap around past midnight
+    if (startHr >= endHr) {
+        alert("Start time must be earlier than end time.");
+        return;
+    }
+
 
     // Send front-end data to the backend. Flask backend will call db.addEvent() and add the user's email
     const data_d = {
