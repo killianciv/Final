@@ -207,6 +207,7 @@ const eventDates = {{ dates | tojson }};  // ['04/20/25', '04/21/25', '04/22/25'
 const user = {{ user | tojson }};
 const eventId = {{ event_id }};
 // Use the start and end times to give each cell its proper time
+// Client-side validation prevents time from wrapping around past midnight, so this logic works
 const timeRange = {{ times | tojson }};  // should have start_time and end_time
 const times = [];
 for (let hour = timeRange.start_time; hour < timeRange.end_time; hour++) {
